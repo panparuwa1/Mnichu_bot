@@ -1,0 +1,26 @@
+Nieobsluzony blad: DiscordAPIError[10062]: Unknown interaction
+    at handleErrors (C:\Users\panpa\OneDrive\Desktop\michubot\node_modules\@discordjs\rest\dist\index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async BurstHandler.runRequest (C:\Users\panpa\OneDrive\Desktop\michubot\node_modules\@discordjs\rest\dist\index.js:866:23)
+    at async _REST.request (C:\Users\panpa\OneDrive\Desktop\michubot\node_modules\@discordjs\rest\dist\index.js:1307:22)
+    at async ChatInputCommandInteraction.reply (C:\Users\panpa\OneDrive\Desktop\michubot\node_modules\discord.js\src\structures\interfaces\InteractionResponses.js:193:22) {
+  requestBody: { files: [], json: { type: 4, data: [Object] } },
+  rawError: { message: 'Unknown interaction', code: 10062 },
+  code: 10062,
+  status: 404,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1522309192394866738/aW50ZXJhY3Rpb246MTUyMjMwOTE5MjM5NDg2NjczODozQ0Z3a1cyc05aSUdzdXNQTE5UYkhxTlBiMWFkN2x3WHhaeG5WQ0NrWW5BQWRJQW1aRWRYQlpUNnVqQURDZGJjcFk5blc3NkdDV1BmV0drT0NCMEdtaVVJbUplRWRMSWs2WGdjVkJFRkFVVEI2OGdRTXRpSjVQZkY4THBLVjd6UA/callback?with_response=false'
+}
+Nieobsluzony blad: DiscordAPIError[10062]: Unknown interaction
+    at handleErrors (C:\Users\panpa\OneDrive\Desktop\michubot\node_modules\@discordjs\rest\dist\index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async BurstHandler.runRequest (C:\Users\panpa\OneDrive\Desktop\michubot\node_modules\@discordjs\rest\dist\index.js:866:23)
+    at async _REST.request (C:\Users\panpa\OneDrive\Desktop\michubot\node_modules\@discordjs\rest\dist\index.js:1307:22)
+    at async ChatInputCommandInteraction.reply (C:\Users\panpa\OneDrive\Desktop\michubot\node_modules\discord.js\src\structures\interfaces\InteractionResponses.js:193:22) {
+  requestBody: { files: [], json: { type: 4, data: [Object] } },
+  rawError: { message: 'Unknown interaction', code: 10062 },
+  code: 10062,
+  status: 404,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1522309517751353536/aW50ZXJhY3Rpb246MTUyMjMwOTUxNzc1MTM1MzUzNjppZjJ1cmNibVRiUUFub3N5cHo1ZFNmcHVJM05oZUJ4UDZhbW41NXZaTzQzVTAzSzNxNjhZcE9Wekd0VW5xWjJpRkNuV2FxOXRrRjhSdFZ0N3NiajNqWXJ2aEt2SG1kaEFBZjh3STR3N2hKT2F5cmhUamFIT243dlA0YnZSbWNwOQ/callback?with_response=false'
+}
