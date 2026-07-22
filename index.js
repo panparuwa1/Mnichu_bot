@@ -1,4 +1,4 @@
-﻿require("dotenv").config();
+require("dotenv").config();
 
 const fs = require("fs");
 const path = require("path");
@@ -1934,11 +1934,11 @@ client.on("messageCreate", async (message) => {
       });
     }
 
-    const warning = await message.channel.send({
-      content: `${message.author}, nie wysyłaj linków.`,
+    await message.author.send({
+      content: `Donald Tusk Cie widzi nie wysyłaj linków **${message.guild.name}**.`,
+    }).catch((error) => {
+      console.error("Nie udalo sie wyslac prywatnej wiadomosci za antylink/antygif:", error);
     });
-
-    setTimeout(() => warning.delete().catch(() => null), 5000);
     return;
   }
 
