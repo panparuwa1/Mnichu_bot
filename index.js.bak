@@ -19,7 +19,6 @@ const {
   StringSelectMenuBuilder,
   TextInputBuilder,
   TextInputStyle,
-  UserSelectMenuBuilder,
 } = require("discord.js");
 
 const CONFIG_PATH = path.join(__dirname, "config.json");
@@ -32,7 +31,6 @@ const stickyCooldowns = new Set();
 const creatingTickets = new Set();
 const spamTracker = new Map();
 const inviteCache = new Map();
-const scammerSelections = new Map();
 
 const SETTINGS = {
   shopName: "Mnichu Shop | 7 zapro = garama",
@@ -1117,71 +1115,6 @@ function formatTicketAnswers(type, answers) {
   return `Opis sprawy:\n\`\`\`\n${answers.description || "Brak opisu"}\n\`\`\``;
 }
 
-
-// ===== SCAMERS - WYBOR UZYTKOWNIKA SERWERA =====
-async function showScammerPicker(interactionOrMessage) {
-  const select = new UserSelectMenuBuilder()
-    .setCustomId("scammer_select")
-    .setPlaceholder("Wybierz nazwe scamera z uzytkownikow serwera")
-    .setMinValues(1)
-    .setMaxValues(1);
-
-  const rowSelect = new ActionRowBuilder().addComponents(select);
-
-  const embed = new EmbedBuilder()
-    .setColor(COLOR)
-    .setTitle("Scamers - wybierz osobe")
-    .setDescription(
-      [
-        "Drugie pole, czyli nazwa scamera, jest teraz wyborem uzytkownika z serwera.",
-        "Kliknij liste ponizej i wybierz osobe, ktora oszukala.",
-        "",
-        "Po wybraniu poprosze Cie o opis scamu.",
-      ].join("\n")
-    )
-    .setFooter({ text: `${SETTINGS.shopName}` });
-
-  const payload = { embeds: [embed], components: [rowSelect] };
-
-  await interactionOrMessage.reply({ ...payload, ephemeral: true });
-}
-
-function showScammerDescriptionModal(interaction, pickedUser) {
-  const modal = new ModalBuilder()
-    .setCustomId("ticket_modal_scamers_description")
-    .setTitle("Scamers - formularz".slice(0, 45));
-
-  const idInput = new TextInputBuilder()
-    .setCustomId("ticket_scammer_id")
-    .setLabel("ID scamera")
-    .setStyle(TextInputStyle.Short)
-    .setValue(pickedUser.id)
-    .setRequired(true);
-
-  const descInput = new TextInputBuilder()
-    .setCustomId("ticket_scam_description")
-    .setLabel("Opis na co oszukal")
-    .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder("Opisz dokladnie, na co oszukal")
-    .setMinLength(5)
-    .setMaxLength(1000)
-    .setRequired(true);
-
-  modal.addComponents(
-    new ActionRowBuilder().addComponents(idInput),
-    new ActionRowBuilder().addComponents(descInput)
-  );
-
-  // Zapisz wybor w cache
-  scammerSelections.set(interaction.user.id, {
-    userId: pickedUser.id,
-    username: pickedUser.username,
-    displayName: pickedUser.displayName || pickedUser.globalName || pickedUser.username,
-  });
-
-  return interaction.showModal(modal);
-}
-// ===== KONIEC SCAMERS - WYBOR UZYTKOWNIKA =====
 function showTicketModal(interaction, type) {
   const label = SETTINGS.ticketTypes[type] || type;
   const modal = new ModalBuilder()
@@ -1372,7 +1305,34 @@ function showTicketModal(interaction, type) {
   }
 
   if (type === "scamers") {
-    return showScammerPicker(interaction, 0);
+    const scammerIdInput = new TextInputBuilder()
+      .setCustomId("ticket_scammer_id")
+      .setLabel("ID scamera")
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder("np. 123456789012345678")
+      .setRequired(true);
+
+    const scammerNameInput = new TextInputBuilder()
+      .setCustomId("ticket_scammer_name")
+      .setLabel("Nazwa scamera")
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder("np. nick / nazwa Discord")
+      .setRequired(true);
+
+    const scamDescriptionInput = new TextInputBuilder()
+      .setCustomId("ticket_scam_description")
+      .setLabel("Opis na co oszukal")
+      .setStyle(TextInputStyle.Paragraph)
+      .setPlaceholder("Opisz dokladnie, na co oszukal")
+      .setRequired(true);
+
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(scammerIdInput),
+      new ActionRowBuilder().addComponents(scammerNameInput),
+      new ActionRowBuilder().addComponents(scamDescriptionInput)
+    );
+
+    return interaction.showModal(modal);
   }
   if (type === "partnerstwa") {
   const membersInput = new TextInputBuilder()
@@ -2338,42 +2298,6 @@ await interaction.channel.send({
     return showTicketModal(interaction, interaction.values[0]);
   }
 
-  if (
-    (interaction.isUserSelectMenu() || interaction.isStringSelectMenu()) &&
-    interaction.customId === "scammer_select"
-  ) {
-    const rawPickedId = interaction.values?.[0];
-    const pickedId = rawPickedId?.startsWith("scammer_pick:")
-      ? rawPickedId.replace("scammer_pick:", "")
-      : rawPickedId;
-
-    if (!pickedId) {
-      return interaction.reply({ content: "Nie wybrano zadnej osoby.", ephemeral: true });
-    }
-
-    if (pickedId === "none") {
-      return interaction.reply({ content: "Nie wybrano zadnej osoby.", ephemeral: true });
-    }
-
-    const pickedMember = await interaction.guild.members.fetch(pickedId).catch(() => null);
-    const pickedUser = pickedMember?.user || interaction.users.get(pickedId);
-    if (!pickedUser) {
-      return interaction.reply({ content: "Nie znaleziono tej osoby na serwerze.", ephemeral: true });
-    }
-
-    return showScammerDescriptionModal(interaction, {
-      id: pickedUser.id,
-      username: pickedUser.username,
-      globalName: pickedUser.globalName,
-      displayName: pickedMember?.displayName,
-    });
-  }
-
-  if (interaction.isButton() && interaction.customId === "scammer_cancel") {
-    scammerSelections.delete(interaction.user.id);
-    return interaction.update({ content: "Anulowano wybor scamers.", embeds: [], components: [] });
-  }
-
   if (interaction.isModalSubmit() && interaction.customId.startsWith("ticket_modal_")) {
     const type = interaction.customId.replace("ticket_modal_", "");
 
@@ -2418,25 +2342,6 @@ await interaction.channel.send({
         accountType: interaction.fields.getTextInputValue("ticket_mystery_account"),
         price: interaction.fields.getTextInputValue("ticket_mystery_price"),
         payment: interaction.fields.getTextInputValue("ticket_mystery_payment"),
-      });
-    }
-
-    if (type === "scamers_description") {
-      const picked = scammerSelections.get(interaction.user.id);
-      scammerSelections.delete(interaction.user.id);
-
-      if (!picked) {
-        return interaction.reply({
-          content: "Nie znaleziono wczesniejszego wyboru osoby. Sprobuj ponownie otworzyc ticket Scamers.",
-          ephemeral: true,
-        });
-      }
-
-      return createTicket(interaction, "scamers", {
-        scammerId: interaction.fields.getTextInputValue("ticket_scammer_id"),
-        scammerName: picked.displayName,
-        scammerUsername: picked.username,
-        scamDescription: interaction.fields.getTextInputValue("ticket_scam_description"),
       });
     }
 
