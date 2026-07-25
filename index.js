@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const fs = require("fs");
 const path = require("path");
+const readline = require("readline");
 const {
   ActionRowBuilder,
   ActivityType,
@@ -40,6 +41,7 @@ const SETTINGS = {
   accountsPanelImageUrl: "https://www.image2url.com/r2/default/images/1782924278832-02cc25a2-d1bc-4e79-983f-2aba41644ba0.png",
   welcomeChannelId: "1492219297068744861",
   leaveChannelId: "1506358859181326397",
+  terminalMessageChannelId: "TU_WPISZ_ID_KANALU",
   ticketLogChannelId: "1492219297068744854",
   verifyRoleIds: [
     "1503692092457881602",
@@ -1695,6 +1697,77 @@ const client = new Client({
   partials: [Partials.User, Partials.GuildMember, Partials.Message, Partials.Channel, Partials.Reaction],
 });
 
+function splitDiscordMessage(content) {
+  const chunks = [];
+
+  for (let index = 0; index < content.length; index += 2000) {
+    chunks.push(content.slice(index, index + 2000));
+  }
+
+  return chunks;
+}
+
+async function sendTerminalMessage(content) {
+  const channelId = SETTINGS.terminalMessageChannelId;
+
+  if (!channelId || channelId.includes("TU_WPISZ")) {
+    console.log("Ustaw SETTINGS.terminalMessageChannelId w index.js.");
+    return;
+  }
+
+  const channel = await client.channels.fetch(channelId).catch(() => null);
+
+  if (!channel || !channel.isTextBased()) {
+    console.log(`Nie znaleziono tekstowego kanalu o ID: ${channelId}`);
+    return;
+  }
+
+  for (const chunk of splitDiscordMessage(content)) {
+    await channel.send(chunk);
+  }
+
+  console.log("Wiadomosc wyslana.");
+}
+
+function setupTerminalCommands() {
+  if (!process.stdin.isTTY) return;
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    prompt: "> ",
+  });
+
+  console.log("Terminal: wpisz `say tresc wiadomosci`, aby wyslac wiadomosc na kanal.");
+  rl.prompt();
+
+  rl.on("line", async (line) => {
+    const input = line.trim();
+
+    if (!input) {
+      rl.prompt();
+      return;
+    }
+
+    const [command, ...args] = input.split(" ");
+    const content = args.join(" ").trim();
+
+    if (command === "say" || command === "wyslij") {
+      if (!content) {
+        console.log("Uzycie: say tresc wiadomosci");
+      } else {
+        await sendTerminalMessage(content).catch((error) => {
+          console.error("Nie udalo sie wyslac wiadomosci z terminala:", error);
+        });
+      }
+    } else {
+      console.log("Nieznana komenda. Uzyj: say tresc wiadomosci");
+    }
+
+    rl.prompt();
+  });
+}
+
 client.once("clientReady", async () => {
   console.log(`Zalogowano jako ${client.user.tag}`);
 
@@ -1710,6 +1783,8 @@ client.once("clientReady", async () => {
     if (guild) await refreshInviteCache(guild);
     console.log("Komendy serwerowe zarejestrowane.");
   }
+
+  setupTerminalCommands();
 });
 
 client.on("guildMemberAdd", async (member) => {
