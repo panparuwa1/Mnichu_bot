@@ -1,4 +1,4 @@
-require("dotenv").config();
+﻿require("dotenv").config();
 
 const fs = require("fs");
 const path = require("path");
@@ -41,7 +41,7 @@ const SETTINGS = {
   accountsPanelImageUrl: "https://www.image2url.com/r2/default/images/1782924278832-02cc25a2-d1bc-4e79-983f-2aba41644ba0.png",
   welcomeChannelId: "1492219297068744861",
   leaveChannelId: "1506358859181326397",
-  terminalMessageChannelId: "TU_WPISZ_ID_KANALU",
+  terminalMessageChannelId: "1492219297676791975",
   ticketLogChannelId: "1492219297068744854",
   verifyRoleIds: [
     "1503692092457881602",
@@ -139,6 +139,7 @@ function loadConfig() {
     reactionRoles: loaded.reactionRoles || {},
     inviteStats: loaded.inviteStats || {},
     memberInvites: loaded.memberInvites || {},
+    terminalMessageChannelId: loaded.terminalMessageChannelId || SETTINGS.terminalMessageChannelId,
   };
 }
 
@@ -1708,7 +1709,7 @@ function splitDiscordMessage(content) {
 }
 
 async function sendTerminalMessage(content) {
-  const channelId = SETTINGS.terminalMessageChannelId;
+  const channelId = config.terminalMessageChannelId || SETTINGS.terminalMessageChannelId;
 
   if (!channelId || channelId.includes("TU_WPISZ")) {
     console.log("Ustaw SETTINGS.terminalMessageChannelId w index.js.");
@@ -1730,15 +1731,18 @@ async function sendTerminalMessage(content) {
 }
 
 function setupTerminalCommands() {
-  if (!process.stdin.isTTY) return;
+  if (setupTerminalCommands.started) return;
+  setupTerminalCommands.started = true;
 
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
     prompt: "> ",
+    terminal: true,
   });
 
-  console.log("Terminal: wpisz `say tresc wiadomosci`, aby wyslac wiadomosc na kanal.");
+  console.log("Terminal gotowy. Komenda: say tresc wiadomosci");
+  console.log(`Kanal terminala: ${SETTINGS.terminalMessageChannelId}`);
   rl.prompt();
 
   rl.on("line", async (line) => {
@@ -1751,8 +1755,9 @@ function setupTerminalCommands() {
 
     const [command, ...args] = input.split(" ");
     const content = args.join(" ").trim();
+    const normalizedCommand = command.toLowerCase().replace(/^[!/]/, "");
 
-    if (command === "say" || command === "wyslij") {
+    if (["say", "send", "wyslij", "wiadomosc"].includes(normalizedCommand)) {
       if (!content) {
         console.log("Uzycie: say tresc wiadomosci");
       } else {
@@ -1776,6 +1781,8 @@ client.once("clientReady", async () => {
     status: "online",
   });
 
+  setupTerminalCommands();
+
   if (process.env.GUILD_ID) {
     const guild = await client.guilds.fetch(process.env.GUILD_ID).catch(() => null);
     await guild?.commands.set(commands.map((command) => command.toJSON()));
@@ -1783,8 +1790,6 @@ client.once("clientReady", async () => {
     if (guild) await refreshInviteCache(guild);
     console.log("Komendy serwerowe zarejestrowane.");
   }
-
-  setupTerminalCommands();
 });
 
 client.on("guildMemberAdd", async (member) => {
