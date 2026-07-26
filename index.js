@@ -1,4 +1,4 @@
-﻿require("dotenv").config();
+require("dotenv").config();
 
 const fs = require("fs");
 const path = require("path");
@@ -2000,6 +2000,7 @@ client.on("messageCreate", async (message) => {
 
   if (
     SETTINGS.antiLinkEnabled &&
+    !isTicketChannel(message.channel) &&
     (hasBlockedLink(message.content) || hasBlockedGif(message)) &&
     !canBypassAntiLink(message.member)
   ) {
