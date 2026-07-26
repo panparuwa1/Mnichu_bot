@@ -38,6 +38,7 @@ const scammerSelections = new Map();
 const SETTINGS = {
   shopName: "Mnichu Shop | 7 zapro = garama",
   ticketPanelImageUrl: "https://cdn.phototourl.com/free/2026-07-01-3d5c2e47-00a3-4dc6-87fa-d418eac97c19.png",
+  indexTicketPanelImageUrl: "https://cdn.phototourl.com/free/2026-07-26-ee1d555a-2d9e-4c1a-857b-28b370c627b6.png",
   accountsPanelImageUrl: "https://www.image2url.com/r2/default/images/1782924278832-02cc25a2-d1bc-4e79-983f-2aba41644ba0.png",
   welcomeChannelId: "1492219297068744861",
   leaveChannelId: "1506358859181326397",
@@ -108,6 +109,14 @@ const SETTINGS = {
     "mystery-konta": "<:mystery:1522123319070031922>",
     scamers: "<:klaun:1510537174045687869>",
     partnerstwa: "<:ludzie:1510345875296227390>"
+  },
+  indexTicketBases: {
+    divine: { label: "Baza Divine", description: "25zł | 5garam · zastaw nie wymagany", emoji: "<:Divine_Mutation:1513884777957298328>" },
+    radioactive: { label: "Baza Radioactive", description: "20zł | 4garam · zastaw nie wymagany", emoji: "<:Radioactive_Mutation:1513885446051201185>" },
+    "ying-yang": { label: "Baza Ying Yang", description: "20zł | 3garamy · zastaw 1garama", emoji: "<:YinYang_Mutation:1513885526892089395>" },
+    galaxy: { label: "Baza Galaxy", description: "20zł | 3garamy · zastaw nie wymagany", emoji: "<:Galaxy_Mutation:1513884830423842816>" },
+    lava: { label: "Baza Lava", description: "10zł | 2garamy · zastaw nie wymagany", emoji: "<:Lava_Mutation:1513884934731993290>" },
+    candy: { label: "Baza Candy", description: "10zł | 2garamy · zastaw 3 garamy", emoji: "<:Candy_Mutation:1513884721564749965>" },
   },
   reactionRoles: {
     // "ID_WIADOMOSCI": {
@@ -556,6 +565,16 @@ async function ticketParentId(guild, type) {
 async function resolveTicketEmoji(guild, value) {
   const emoji = SETTINGS.ticketEmojis[value];
 
+  return resolveEmoji(guild, emoji, `ticketa "${value}"`);
+}
+
+async function resolveIndexTicketEmoji(guild, value) {
+  const emoji = SETTINGS.indexTicketBases?.[value]?.emoji;
+
+  return resolveEmoji(guild, emoji, `bazy index "${value}"`);
+}
+
+async function resolveEmoji(guild, emoji, label) {
   if (!emoji) return null;
 
   if (typeof emoji === "string") {
@@ -578,7 +597,7 @@ async function resolveTicketEmoji(guild, value) {
 
   const guildEmoji = await guild.emojis.fetch(emojiId).catch(() => null);
   if (!guildEmoji) {
-    console.warn(`Pomijam emoji ticketa "${value}" - nie znaleziono emoji o ID ${emojiId}.`);
+    console.warn(`Pomijam emoji ${label} - nie znaleziono emoji o ID ${emojiId}.`);
     return null;
   }
 
@@ -597,6 +616,21 @@ async function ticketOption(guild, value, label) {
   };
 
   const emoji = await resolveTicketEmoji(guild, value);
+  if (emoji) {
+    option.emoji = emoji;
+  }
+
+  return option;
+}
+
+async function indexTicketOption(guild, value, settings) {
+  const option = {
+    label: String(settings.label).slice(0, 100),
+    description: String(settings.description || `Otworz ticket: ${settings.label}`).slice(0, 100),
+    value,
+  };
+
+  const emoji = await resolveIndexTicketEmoji(guild, value);
   if (emoji) {
     option.emoji = emoji;
   }
@@ -1062,6 +1096,13 @@ function formatTicketAnswers(type, answers) {
   }
 
   if (type === "index") {
+    if (answers.additionalInfo) {
+      return [
+        `> -Baza: **${answers.base || "Brak"}**`,
+        `> -Informacje dodatkowe: **${answers.additionalInfo || "Brak"}**`,
+      ].join("\n");
+    }
+
     return [
       `> -Jaka baze chcesz kupic: **${answers.base || "Brak"}**`,
       `> -Czym placisz: **${answers.payment || "Brak"}**`,
@@ -1108,6 +1149,7 @@ function formatTicketAnswers(type, answers) {
       `> -ID osoby z którą chcesz się wymienić: **${answers.exchangeUserId || "Brak"}**`,
       `> -Nazwa osoby z którą chcesz się wymienić: **${answers.exchangeUserName || "Brak"}**`,
       `> -O co jest wymiana: **${answers.exchangeItem || "Brak"}**`,
+      `> -Jaka oplata dla mm: **${answers.exchangeFee || "Brak"}**`,
     ].join("\n");
   }
 
@@ -1117,7 +1159,7 @@ function formatTicketAnswers(type, answers) {
   ].join("\n");
 }
 
-  return `Opis sprawy:\n\`\`\`\n${answers.description || "Brak opisu"}\n\`\`\``;
+  return `Informacje dodatkowe:\n\`\`\`\n${answers.description || "Brak informacji"}\n\`\`\``;
 }
 
 
@@ -1344,34 +1386,7 @@ function showTicketModal(interaction, type) {
   }
 
   if (type === "middleman") {
-    const userIdInput = new TextInputBuilder()
-      .setCustomId("ticket_exchange_user_id")
-      .setLabel("ID osoby z którą chcesz się wymienić")
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder("np. 123456789012345678")
-      .setRequired(true);
-
-    const userNameInput = new TextInputBuilder()
-      .setCustomId("ticket_exchange_user_name")
-      .setLabel("Nazwa osoby z którą chcesz się wymienić")
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder("np. nick / nazwa Discord")
-      .setRequired(true);
-
-    const itemInput = new TextInputBuilder()
-      .setCustomId("ticket_exchange_item")
-      .setLabel("O co jest wymiana?")
-      .setStyle(TextInputStyle.Paragraph)
-      .setPlaceholder("np. ja daje Robux, on daje PSC")
-      .setRequired(true);
-
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(userIdInput),
-      new ActionRowBuilder().addComponents(userNameInput),
-      new ActionRowBuilder().addComponents(itemInput)
-    );
-
-    return interaction.showModal(modal);
+    return showMiddlemanModal(interaction);
   }
 
   if (type === "scamers") {
@@ -1394,12 +1409,101 @@ function showTicketModal(interaction, type) {
 
   const descriptionInput = new TextInputBuilder()
     .setCustomId("ticket_description")
-    .setLabel("Opis sprawy")
+    .setLabel("Informacje dodatkowe")
     .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder("Opisz dokladnie, czego dotyczy ticket")
+    .setPlaceholder("Wpisz dodatkowe informacje do ticketa")
     .setRequired(true);
 
   modal.addComponents(new ActionRowBuilder().addComponents(descriptionInput));
+  return interaction.showModal(modal);
+}
+
+function showMiddlemanPicker(interaction) {
+  const select = new UserSelectMenuBuilder()
+    .setCustomId("middleman_user_select")
+    .setPlaceholder("Wybierz osobe do wymiany")
+    .setMinValues(1)
+    .setMaxValues(1);
+
+  return interaction.reply({
+    content: "Wybierz osobe, z ktora robisz wymiane:",
+    components: [new ActionRowBuilder().addComponents(select)],
+    ephemeral: true,
+  });
+}
+
+function showMiddlemanModal(interaction, pickedMember = null) {
+  const label = SETTINGS.ticketTypes.middleman || "Middleman";
+  const pickedUser = pickedMember?.user;
+  const displayName = pickedMember?.displayName || pickedUser?.globalName || pickedUser?.username || "";
+
+  const userIdInput = new TextInputBuilder()
+    .setCustomId("ticket_exchange_user_id")
+    .setLabel("ID osoby z wymiany")
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder("np. 123456789012345678")
+    .setRequired(true);
+
+  if (pickedUser?.id) {
+    userIdInput.setValue(pickedUser.id);
+  }
+
+  const userNameInput = new TextInputBuilder()
+    .setCustomId("ticket_exchange_user_name")
+    .setLabel("Nazwa osoby z wymiany")
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder("np. nick / nazwa Discord")
+    .setRequired(true);
+
+  if (displayName) {
+    userNameInput.setValue(displayName.slice(0, 4000));
+  }
+
+  const itemInput = new TextInputBuilder()
+    .setCustomId("ticket_exchange_item")
+    .setLabel("O co jest wymiana?")
+    .setStyle(TextInputStyle.Paragraph)
+    .setPlaceholder("np. ja daje Robux, on daje PSC")
+    .setRequired(true);
+
+  const feeInput = new TextInputBuilder()
+    .setCustomId("ticket_exchange_fee")
+    .setLabel("Jaka oplata dla mm?")
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder("np. 5zl / 1 garama / brak")
+    .setRequired(true);
+
+  const modal = new ModalBuilder()
+    .setCustomId("ticket_modal_middleman")
+    .setTitle(`Ticket - ${label}`.slice(0, 45))
+    .addComponents(
+      new ActionRowBuilder().addComponents(userIdInput),
+      new ActionRowBuilder().addComponents(userNameInput),
+      new ActionRowBuilder().addComponents(itemInput),
+      new ActionRowBuilder().addComponents(feeInput)
+    );
+
+  return interaction.showModal(modal);
+}
+
+function showIndexTicketModal(interaction, baseKey) {
+  const base = SETTINGS.indexTicketBases?.[baseKey];
+  if (!base) {
+    return interaction.reply({ content: "Nie znaleziono tej bazy.", ephemeral: true });
+  }
+
+  const additionalInfoInput = new TextInputBuilder()
+    .setCustomId("ticket_index_additional_info")
+    .setLabel("Informacje dodatkowe")
+    .setStyle(TextInputStyle.Paragraph)
+    .setPlaceholder("Wpisz dodatkowe informacje do ticketa")
+    .setRequired(true);
+
+  const modal = new ModalBuilder()
+    .setCustomId(`ticket_modal_index_modal_${baseKey}`)
+    .setTitle(`Ticket - ${base.label}`.slice(0, 45))
+    .addComponents(new ActionRowBuilder().addComponents(additionalInfoInput));
+
   return interaction.showModal(modal);
 }
 
@@ -1422,6 +1526,148 @@ async function ticketPanelPayload(guild) {
   return {
     embeds: [ticketPanelEmbed(), ...ticketPanelSmallImageEmbeds()],
     components: [new ActionRowBuilder().addComponents(menu)],
+  };
+}
+
+async function indexTicketPanelPayload(guild) {
+  const entries = Object.entries(SETTINGS.indexTicketBases || {});
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  const options = await Promise.all(
+    entries.slice(0, 25).map(([value, settings]) => indexTicketOption(guild, value, settings))
+  );
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId("ticket_index_select")
+    .setPlaceholder("❌ × Wybierz baze")
+    .addOptions(options);
+
+  const embed = baseEmbed(`${BRAND} x INDEX`)
+    .setDescription(
+      [
+        "> 📩 × **Wybierz baze, aby utworzyc ticket index!**",
+        "",
+        ...entries.map(([, settings]) => `> ${settings.emoji || "•"} **${settings.label}**`),
+      ].join("\n")
+    )
+    .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }));
+
+  if (SETTINGS.indexTicketPanelImageUrl) {
+    embed.setImage(SETTINGS.indexTicketPanelImageUrl);
+  }
+
+  return {
+    embeds: [embed],
+    components: [new ActionRowBuilder().addComponents(menu)],
+  };
+}
+
+async function buySellTicketPanelPayload(guild) {
+  const entries = ["zakup", "skup"]
+    .map((type) => [type, SETTINGS.ticketTypes?.[type]])
+    .filter(([, label]) => Boolean(label));
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  const options = await Promise.all(entries.map(([value, label]) => ticketOption(guild, value, label)));
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId("ticket_select")
+    .setPlaceholder("❌ × Wybierz zakup albo skup")
+    .addOptions(options);
+
+  const embed = baseEmbed(`${BRAND} x ZAKUP / SKUP`)
+    .setDescription(
+      [
+        "> 📩 × **Wybierz, czy chcesz kupic czy sprzedac!**",
+        "",
+        ...entries.map(([value, label]) => `> ${SETTINGS.ticketEmojis?.[value] || "•"} **${label}**`),
+      ].join("\n")
+    )
+    .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }));
+
+  return {
+    embeds: [embed],
+    components: [new ActionRowBuilder().addComponents(menu)],
+  };
+}
+
+async function middlemanTicketPanelPayload(guild) {
+  const label = SETTINGS.ticketTypes?.middleman;
+
+  if (!label) {
+    return null;
+  }
+
+  const button = new ButtonBuilder()
+    .setCustomId("ticket_button_middleman")
+    .setLabel(label)
+    .setStyle(ButtonStyle.Secondary);
+
+  const emoji = await resolveTicketEmoji(guild, "middleman");
+  if (emoji) {
+    button.setEmoji(emoji);
+  }
+
+  const embed = baseEmbed(`${BRAND} x MIDDLEMAN`)
+    .setDescription(
+      [
+        "> 📩 × **Kliknij ponizej, aby utworzyc ticket middleman!**",
+        "",
+        `> ${SETTINGS.ticketEmojis?.middleman || "•"} **${label}**`,
+      ].join("\n")
+    )
+    .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }));
+
+  return {
+    embeds: [embed],
+    components: [new ActionRowBuilder().addComponents(button)],
+  };
+}
+
+async function rewardsAccountsTicketPanelPayload(guild) {
+  const entries = ["odbior-nagrody", "mystery-konta"]
+    .map((type) => [type, SETTINGS.ticketTypes?.[type]])
+    .filter(([, label]) => Boolean(label));
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  const buttons = await Promise.all(
+    entries.map(async ([type, label]) => {
+      const button = new ButtonBuilder()
+        .setCustomId(`ticket_button_${type}`)
+        .setLabel(label)
+        .setStyle(ButtonStyle.Secondary);
+
+      const emoji = await resolveTicketEmoji(guild, type);
+      if (emoji) {
+        button.setEmoji(emoji);
+      }
+
+      return button;
+    })
+  );
+
+  const embed = baseEmbed(`${BRAND} x NAGRODY / MYSTERY KONTA`)
+    .setDescription(
+      [
+        "> 📩 × **Kliknij odpowiedni przycisk, aby utworzyc ticket!**",
+        "",
+        ...entries.map(([type, label]) => `> ${SETTINGS.ticketEmojis?.[type] || "•"} **${label}**`),
+      ].join("\n")
+    )
+    .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }));
+
+  return {
+    embeds: [embed],
+    components: [new ActionRowBuilder().addComponents(buttons)],
   };
 }
 
@@ -1908,6 +2154,66 @@ client.on("messageCreate", async (message) => {
     await message.channel.send(verificationPanelPayload(message.guild)).catch((error) => {
       console.error("Blad panelu weryfikacji:", error);
       return message.reply("Nie udalo sie wyslac panelu weryfikacji. Sprawdz konsole bota.").catch(() => null);
+    });
+    return;
+  }
+
+  if (command === "!tickety_index") {
+    if (!isAdmin(message.member)) {
+      await message.reply("Tylko administrator moze uzyc tej komendy.").catch(() => null);
+      return;
+    }
+
+    const payload = await indexTicketPanelPayload(message.guild);
+
+    if (!payload) {
+      await message.reply("Brakuje baz w SETTINGS.indexTicketBases.").catch(() => null);
+      return;
+    }
+
+    await message.channel.send(payload).catch((error) => {
+      console.error("Blad panelu ticketow index:", error);
+      return message.reply("Nie udalo sie wyslac panelu ticketow index. Sprawdz konsole bota.").catch(() => null);
+    });
+    return;
+  }
+
+  if (command === "!tickety_zakup_skup") {
+    if (!isAdmin(message.member)) {
+      await message.reply("Tylko administrator moze uzyc tej komendy.").catch(() => null);
+      return;
+    }
+
+    const payload = await buySellTicketPanelPayload(message.guild);
+
+    if (!payload) {
+      await message.reply("Brakuje kategorii zakup/skup w SETTINGS.ticketTypes.").catch(() => null);
+      return;
+    }
+
+    await message.channel.send(payload).catch((error) => {
+      console.error("Blad panelu ticketow zakup/skup:", error);
+      return message.reply("Nie udalo sie wyslac panelu ticketow zakup/skup. Sprawdz konsole bota.").catch(() => null);
+    });
+    return;
+  }
+
+  if (command === "!tickety_middleman") {
+    if (!isAdmin(message.member)) {
+      await message.reply("Tylko administrator moze uzyc tej komendy.").catch(() => null);
+      return;
+    }
+
+    const payload = await middlemanTicketPanelPayload(message.guild);
+
+    if (!payload) {
+      await message.reply("Brakuje kategorii middleman w SETTINGS.ticketTypes.").catch(() => null);
+      return;
+    }
+
+    await message.channel.send(payload).catch((error) => {
+      console.error("Blad panelu ticketow middleman:", error);
+      return message.reply("Nie udalo sie wyslac panelu ticketow middleman. Sprawdz konsole bota.").catch(() => null);
     });
     return;
   }
@@ -2419,6 +2725,29 @@ await interaction.channel.send({
     return showTicketModal(interaction, interaction.values[0]);
   }
 
+  if (interaction.isStringSelectMenu() && interaction.customId === "ticket_index_select") {
+    return showIndexTicketModal(interaction, interaction.values[0]);
+  }
+
+  if (interaction.isButton() && interaction.customId === "ticket_button_middleman") {
+    return showMiddlemanPicker(interaction);
+  }
+
+  if (interaction.isUserSelectMenu() && interaction.customId === "middleman_user_select") {
+    const pickedId = interaction.values?.[0];
+
+    if (!pickedId) {
+      return interaction.reply({ content: "Nie wybrano zadnej osoby.", ephemeral: true });
+    }
+
+    const pickedMember = await interaction.guild.members.fetch(pickedId).catch(() => null);
+    if (!pickedMember) {
+      return interaction.reply({ content: "Nie znaleziono tej osoby na serwerze.", ephemeral: true });
+    }
+
+    return showMiddlemanModal(interaction, pickedMember);
+  }
+
   if (
     (interaction.isUserSelectMenu() || interaction.isStringSelectMenu()) &&
     interaction.customId === "scammer_select"
@@ -2457,6 +2786,20 @@ await interaction.channel.send({
 
   if (interaction.isModalSubmit() && interaction.customId.startsWith("ticket_modal_")) {
     const type = interaction.customId.replace("ticket_modal_", "");
+
+    if (type.startsWith("index_modal_")) {
+      const baseKey = type.replace("index_modal_", "");
+      const base = SETTINGS.indexTicketBases?.[baseKey];
+
+      if (!base) {
+        return interaction.reply({ content: "Nie znaleziono tej bazy.", ephemeral: true });
+      }
+
+      return createTicket(interaction, "index", {
+        base: base.label,
+        additionalInfo: interaction.fields.getTextInputValue("ticket_index_additional_info"),
+      });
+    }
 
     if (type === "zakup") {
       return createTicket(interaction, type, {
@@ -2534,6 +2877,7 @@ await interaction.channel.send({
         exchangeUserId: interaction.fields.getTextInputValue("ticket_exchange_user_id"),
         exchangeUserName: interaction.fields.getTextInputValue("ticket_exchange_user_name"),
         exchangeItem: interaction.fields.getTextInputValue("ticket_exchange_item"),
+        exchangeFee: interaction.fields.getTextInputValue("ticket_exchange_fee"),
       });
     }
 
